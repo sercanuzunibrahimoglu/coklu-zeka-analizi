@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="tr" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Howard Gardner Çoklu Zeka Kuramına dayalı profesyonel öğrenci değerlendirme ve raporlama sistemi. 56 soruluk envanter ile öğrencilerin baskın zeka alanlarını belirleyin.">
+    <title>Çoklu Zeka Yönelimi Analiz Sistemi</title>
+
+    <!-- TailwindCSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { inter: ['Inter', 'sans-serif'] },
+                    colors: {
+                        navy: { 700: '#1D4ED8', 800: '#1e40af' }
+                    }
+                }
+            }
+        };
+    </script>
+
+    <!-- Özel CSS -->
+    <link rel="stylesheet" href="css/styles.css">
+
+    <!-- Chart.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+
+    <!-- jsPDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.3/jspdf.plugin.autotable.min.js"></script>
+
+    <!-- html2canvas -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <!-- SheetJS (xlsx) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body class="app-bg font-inter">
+
+<!-- ════════════════════════════════════════════════════════
+     PDF YÜKLEME OVERLAY
+     ════════════════════════════════════════════════════════ -->
+<div id="pdf-progress" class="hidden">
+    <div class="pdf-loader">
+        <div class="spinner mx-auto mb-4"></div>
+        <p class="text-white font-semibold">PDF Raporu Oluşturuluyor...</p>
+        <p class="text-slate-400 text-sm mt-1">Lütfen bekleyin</p>
+    </div>
+</div>
+
+<!-- Gizli JSON import input -->
+<input type="file" id="json-import-input" accept=".json" class="hidden" onchange="handleJSONImport(event)">
+<input type="file" id="logo-upload" accept="image/*" class="hidden" onchange="handleLogoUpload(event)">
+
+<!-- ════════════════════════════════════════════════════════
+     GLOBAL NAVİGASYON BARI (Dark Mode Toggle)
+     ════════════════════════════════════════════════════════ -->
+<div class="fixed top-4 right-4 z-50 flex items-center gap-2">
+    <button onclick="toggleDarkMode()"
+            id="dark-mode-btn"
+            class="p-2.5 rounded-xl glass-card text-slate-300 hover:text-white transition-all hover:scale-110 no-print"
+            title="Dark/Light Mode">
+        <span id="dark-mode-icon" class="text-lg">☀️</span>
+    </button>
+    <button onclick="goHome()"
+            id="home-btn"
+            class="px-3 py-2 rounded-xl glass-card text-slate-300 hover:text-white transition-all hover:scale-105 text-sm font-medium flex items-center gap-1 no-print">
+        🏠 Ana Sayfa
+    </button>
+</div>
+
+<!-- ════════════════════════════════════════════════════════
+     EKRAN 1: HOŞGELDİNİZ
+     ════════════════════════════════════════════════════════ -->
+<div id="screen-welcome" class="screen min-h-screen flex flex-col relative overflow-hidden">
+
+    <!-- Parçacık Animasyonu -->
+    <div class="particles-container" id="particles-container"></div>
+
+    <!-- Dekoratif gradyan daireler -->
+    <div class="absolute top-20 left-10 w-72 h-72 rounded-full opacity-10"
+         style="background: radial-gradient(circle, #6366f1, transparent)"></div>
+    <div class="absolute bottom-20 right-10 w-96 h-96 rounded-full opacity-8"
+         style="background: radial-gradient(circle, #8b5cf6, transparent)"></div>
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full opacity-5"
+         style="background: radial-gradient(circle, #3b82f6, transparent)"></div>
+
+    <div class="relative z-10 flex-1 flex flex-col items-center justify-center px-4 py-20">
+
+        <!-- Üst badge -->
+        <div class="hero-badge mb-8 animate-pulse-custom">
+            🧬 Howard Gardner · Çoklu Zeka Kuramı
+        </div>
+
+        <!-- Ana başlık -->
+        <div class="text-center mb-4 max-w-3xl mx-auto">
+            <h1 class="text-4xl md:text-5xl lg:text-6xl font-black mb-4 leading-tight">
+                <span class="text-white text-3xl md:text-4xl">FENCEBİR EĞİTİM KURUMLARI</span>
+                <br>
+                <span class="gradient-text text-3xl md:text-5xl">ÇOKLU ZEKA YÖNELİMİ</span>
+                <br>
+                <span class="text-slate-300 text-3xl md:text-4xl font-bold">ANALİZ SİSTEMİ</span>
+            </h1>
+            <p class="text-slate-400 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
+                Howard Gardner Çoklu Zeka Kuramına Dayalı
+                <span class="text-indigo-400 font-semibold">Öğrenci Değerlendirme Envanteri</span>
+            </p>
+        </div>
+
+        <!-- Zeka alanı ikonları -->
+        <div class="flex flex-wrap justify-center gap-3 mb-10">
+            <span class="px-3 py-1.5 rounded-full text-sm font-medium" style="background:#3B82F620;color:#3B82F6;border:1px solid #3B82F660">📚 Sözel</span>
+            <span class="px-3 py-1.5 rounded-full text-sm font-medium" style="background:#EF444420;color:#EF4444;border:1px solid #EF444460">🔢 Matematik</span>
+            <span class="px-3 py-1.5 rounded-full text-sm font-medium" style="background:#8B5CF620;color:#8B5CF6;border:1px solid #8B5CF660">🎨 Görsel</span>
+            <span class="px-3 py-1.5 rounded-full text-sm font-medium" style="background:#F9731620;color:#F97316;border:1px solid #F9731660">⚽ Bedensel</span>
+            <span class="px-3 py-1.5 rounded-full text-sm font-medium" style="background:#EAB30820;color:#EAB308;border:1px solid #EAB30860">🎵 Müzik</span>
+            <span class="px-3 py-1.5 rounded-full text-sm font-medium" style="background:#22C55E20;color:#22C55E;border:1px solid #22C55E60">👥 Sosyal</span>
+            <span class="px-3 py-1.5 rounded-full text-sm font-medium" style="background:#1D4ED820;color:#60a5fa;border:1px solid #1D4ED860">🧠 İçsel</span>
+            <span class="px-3 py-1.5 rounded-full text-sm font-medium" style="background:#84CC1620;color:#84CC16;border:1px solid #84CC1660">🌿 Doğa</span>
+        </div>
+
+        <!-- İstatistik bilgiler -->
+        <div class="grid grid-cols-3 gap-4 mb-10 max-w-md mx-auto w-full">
+            <div class="glass-card p-4 text-center">
+                <p class="text-2xl font-black text-indigo-400">56</p>
+                <p class="text-xs text-slate-400 mt-1">Soru</p>
+            </div>
+            <div class="glass-card p-4 text-center">
+                <p class="text-2xl font-black text-purple-400">8</p>
+                <p class="text-xs text-slate-400 mt-1">Zeka Alanı</p>
+            </div>
+            <div class="glass-card p-4 text-center">
+                <p class="text-2xl font-black text-green-400">4</p>
+                <p class="text-xs text-slate-400 mt-1">Grafik</p>
+            </div>
+        </div>
+
+        <!-- Devam eden test bildirimi -->
+        <div id="continue-banner"
+             class="hidden mb-6 max-w-lg w-full mx-auto p-4 rounded-2xl border"
+             style="background: rgba(234,179,8,0.1); border-color: rgba(234,179,8,0.3)">
+            <div class="flex items-center gap-3">
+                <span class="text-2xl">⚡</span>
+                <div class="flex-1">
+                    <p class="text-sm font-semibold text-yellow-400">Yarım Kalan Test Bulundu</p>
+                    <p class="text-xs text-slate-400">Kaldığınız yerden devam edebilirsiniz.</p>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="continueTest()" class="btn-primary text-sm py-2 px-4">Devam Et</button>
+                    <button onclick="cancelContinue()" class="btn-secondary text-sm py-2 px-3">İptal</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ana Butonlar -->
+        <div class="flex flex-col sm:flex-row gap-4 mb-12">
+            <button onclick="startTest()" id="btn-start-test"
+                    class="btn-primary text-base px-8 py-4 rounded-2xl text-lg">
+                🚀 Teste Başla
+            </button>
+            <button onclick="goToAdmin()" id="btn-admin"
+                    class="btn-secondary text-base px-8 py-4 rounded-2xl text-lg">
+                ⚙️ Yönetici Paneli
+            </button>
+        </div>
+
+        <!-- Açıklama kartları -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-3xl mx-auto w-full">
+            <div class="glass-card p-5">
+                <div class="text-2xl mb-2">🎯</div>
+                <h3 class="text-sm font-bold text-white mb-1">Kapsamlı Değerlendirme</h3>
+                <p class="text-xs text-slate-400">8 zeka alanında 56 soruluk bilimsel envanter</p>
+            </div>
+            <div class="glass-card p-5">
+                <div class="text-2xl mb-2">📊</div>
+                <h3 class="text-sm font-bold text-white mb-1">Detaylı Raporlama</h3>
+                <p class="text-xs text-slate-400">PDF & Excel raporu, 4 grafik, ~2400 kelime analiz</p>
+            </div>
+            <div class="glass-card p-5">
+                <div class="text-2xl mb-2">🔒</div>
+                <h3 class="text-sm font-bold text-white mb-1">Gizlilik</h3>
+                <p class="text-xs text-slate-400">Tüm veriler cihazınızda saklanır, sunucuya gönderilmez</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alt bilgi -->
+    <div class="relative z-10 text-center py-4 text-xs text-slate-500">
+        Çoklu Zeka Yönelimi Analiz Sistemi · v1.0 · 2024
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════
+     EKRAN 2: ÖĞRENCİ BİLGİ FORMU
+     ════════════════════════════════════════════════════════ -->
+<div id="screen-form" class="screen hidden min-h-screen py-12 px-4">
+    <div class="max-w-3xl mx-auto">
+
+        <!-- Başlık -->
+        <div class="text-center mb-8">
+            <div class="hero-badge mb-4">📋 Adım 1 / 2 — Öğrenci Bilgileri</div>
+            <h2 class="text-2xl md:text-3xl font-black text-white">Öğrenci Bilgi Formu</h2>
+            <p class="text-slate-400 mt-2 text-sm">Lütfen aşağıdaki bilgileri eksiksiz doldurunuz. ★ ile işaretli alanlar zorunludur.</p>
+        </div>
+
+        <form id="student-form" onsubmit="handleFormSubmit(event)" class="glass-card p-6 md:p-8 space-y-6">
+
+            <!-- Kişisel Bilgiler -->
+            <div>
+                <h3 class="text-sm font-bold text-indigo-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <span class="w-6 h-6 rounded-full bg-indigo-500/20 flex items-center justify-center text-xs">1</span>
+                    Kişisel Bilgiler
+                </h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="form-field-group sm:col-span-2">
+                        <label class="form-label">Ad Soyad ★</label>
+                        <input id="adSoyad" type="text" class="form-input" placeholder="Öğrencinin ad ve soyadı" required>
+                        <p class="field-error hidden text-xs text-red-400 mt-1">Bu alan zorunludur</p>
+                    </div>
+                    <div class="form-field-group">
+                        <label class="form-label">Yaş ★</label>
+                        <input id="yas" type="number" class="form-input" placeholder="11-15" min="10" max="18" required>
+                        <p class="field-error hidden text-xs text-red-400 mt-1">Bu alan zorunludur</p>
+                    </div>
+                    <div class="form-field-group">
+                        <label class="form-label">Cinsiyet (Opsiyonel)</label>
+                        <select id="cinsiyet" class="form-input">
+                            <option value="">Belirtmek istemiyorum</option>
+                            <option value="Kız">Kız</option>
+                            <option value="Erkek">Erkek</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- İletişim & Rehberlik -->
+            <div>
+                <h3 class="text-sm font-bold text-green-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <span class="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center text-xs">2</span>
+                    İletişim & Rehberlik
+                </h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="form-field-group">
+                        <label class="form-label">Veli Adı Soyadı ★</label>
+                        <input id="veliAdi" type="text" class="form-input" placeholder="Ebeveyn/veli adı soyadı" required>
+                        <p class="field-error hidden text-xs text-red-400 mt-1">Bu alan zorunludur</p>
+                    </div>
+                    <div class="form-field-group">
+                        <label class="form-label">Veli Telefonu</label>
+                        <input id="telefon" type="tel" class="form-input" placeholder="05XX XXX XX XX">
+                    </div>
+                    <div class="form-field-group">
+                        <label class="form-label">Rehber Öğretmen ★</label>
+                        <input id="ogretmen" type="text" class="form-input" placeholder="Rehber öğretmenin adı" required>
+                        <p class="field-error hidden text-xs text-red-400 mt-1">Bu alan zorunludur</p>
+                    </div>
+                    <div class="form-field-group">
+                        <label class="form-label">Test Tarihi</label>
+                        <input id="testTarihi" type="date" class="form-input">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Submit -->
+            <div class="pt-2 flex flex-col sm:flex-row gap-3">
+                <button type="submit" class="btn-primary flex-1 justify-center text-base py-3.5">
+                    📝 Testi Başlat →
+                </button>
+                <button type="button" onclick="goHome()" class="btn-secondary justify-center">
+                    ← Geri Dön
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════
+     EKRAN 3: TEST EKRANI
+     ════════════════════════════════════════════════════════ -->
+<div id="screen-test" class="screen hidden min-h-screen flex flex-col">
+
+    <!-- Test Üst Bar -->
+    <div class="sticky top-0 z-40 glass-card rounded-none border-x-0 border-t-0 px-4 py-3 no-print">
+        <div class="max-w-3xl mx-auto">
+            <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-3">
+                    <span id="question-counter" class="text-sm font-bold text-white">Soru 1 / 56</span>
+                    <span id="question-intelligence-badge"
+                          class="text-xs font-semibold px-2 py-1 rounded-full border">
+                    </span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span id="question-answered" class="text-xs text-slate-400">0 cevaplandı</span>
+                    <button onclick="saveAndExit()"
+                            class="text-xs px-3 py-1.5 rounded-lg bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 border border-yellow-500/30 transition-all">
+                        💾 Kaydet & Çık
+                    </button>
+                </div>
+            </div>
+            <!-- Animasyonlu progress bar -->
+            <div class="progress-bar-container">
+                <div id="test-progress-bar" class="progress-bar-fill" style="width: 0%"
+                     role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Soru Alanı -->
+    <div class="flex-1 flex items-center justify-center px-4 py-8">
+        <div class="w-full max-w-3xl">
+
+            <!-- Ters puanlı uyarı -->
+            <div id="reverse-warning" class="hidden mb-4 p-3 rounded-xl text-xs text-amber-400
+                                              border border-amber-500/30 bg-amber-500/10 flex items-center gap-2">
+                <span>ℹ️</span>
+                <span>Bu soru ters puanlama içermektedir. İçtenlikle cevap verin.</span>
+            </div>
+
+            <!-- Soru Kartı -->
+            <div class="question-card p-6 md:p-8 mb-8">
+                <p id="question-text"
+                   class="text-lg md:text-xl font-medium text-white leading-relaxed text-center min-h-[80px] flex items-center justify-center">
+                    Soru yükleniyor...
+                </p>
+            </div>
+
+            <!-- Likert Ölçeği -->
+            <div id="likert-buttons"
+                 class="grid grid-cols-5 gap-2 md:gap-3 mb-8">
+                <!-- Butonlar JS ile oluşturulur -->
+            </div>
+
+            <!-- Klavye ipucu -->
+            <p class="text-center text-xs text-slate-500 mb-6 hidden md:block">
+                💡 Klavye kısayolları: 1-5 tuşları ile cevap verin, → ile ileri, ← ile geri gidin
+            </p>
+
+            <!-- Navigasyon Butonları -->
+            <div class="flex justify-between items-center">
+                <button id="btn-prev" onclick="goToPrevQuestion()"
+                        class="btn-secondary"
+                        disabled>
+                    ← Geri
+                </button>
+
+                <div class="flex gap-3">
+                    <button id="btn-next" onclick="goToNextQuestion()"
+                            class="btn-primary">
+                        İleri →
+                    </button>
+                    <button id="btn-finish" onclick="checkTestCompletion()"
+                            class="hidden btn-primary"
+                            style="background: linear-gradient(135deg, #16a34a, #15803d)">
+                        ✅ Testi Bitir
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════
+     EKRAN 4: SONUÇ SAYFASI
+     ════════════════════════════════════════════════════════ -->
+<div id="screen-results" class="screen hidden min-h-screen px-4 py-8">
+    <div class="max-w-6xl mx-auto space-y-8">
+
+        <!-- Üst Bar: Export Butonları -->
+        <div class="flex flex-wrap justify-between items-center gap-3 no-print">
+            <div>
+                <h2 class="text-2xl font-black text-white">📊 Zeka Profili Sonuçları</h2>
+                <p class="text-slate-400 text-sm">Çoklu Zeka Yönelimi Analiz Raporu</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <button onclick="downloadPDF()" class="btn-primary text-sm py-2 px-4">
+                    📄 PDF İndir
+                </button>
+                <button onclick="downloadExcel()" class="btn-secondary text-sm py-2 px-4">
+                    📊 Excel
+                </button>
+                <button onclick="downloadJSON()" class="btn-secondary text-sm py-2 px-4">
+                    💾 JSON
+                </button>
+                <button onclick="printResults()" class="btn-secondary text-sm py-2 px-4">
+                    🖨️ Yazdır
+                </button>
+                <button onclick="startNewTest()" class="btn-secondary text-sm py-2 px-4">
+                    🔄 Yeni Test
+                </button>
+            </div>
+        </div>
+
+        <!-- Öğrenci Bilgi Kartı -->
+        <div class="glass-card p-5">
+            <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                <span>👤</span> Öğrenci Bilgileri
+            </h3>
+            <div id="result-student-info">
+                <!-- JS ile doldurulur -->
+            </div>
+        </div>
+
+        <!-- 🥇🥈🥉 Madalya Kartları -->
+        <div>
+            <h3 class="text-lg font-bold text-white mb-4 text-center">🏆 Baskın Zeka Alanları</h3>
+            <div id="medal-cards" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <!-- JS ile doldurulur -->
+            </div>
+        </div>
+
+        <!-- YÖNELİME GÖRE MESLEK ÖNERİLERİ -->
+        <div>
+            <h3 class="text-lg font-bold text-white mb-4 text-center">💼 Yönelime Göre Meslek Önerileri</h3>
+            <p class="text-slate-400 text-sm text-center mb-6">Öğrencinin en baskın olduğu ilk 3 zeka alanına uygun meslek grupları</p>
+            <div id="career-suggestions" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                <!-- JS ile doldurulur -->
+            </div>
+        </div>
+
+        <!-- Puan Tablosu -->
+        <div class="glass-card overflow-hidden">
+            <div class="p-5 border-b border-slate-700/50">
+                <h3 class="text-base font-bold text-white flex items-center gap-2">
+                    📋 Detaylı Puan Tablosu
+                </h3>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="border-b border-slate-700/50">
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase">Sıra</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase">Zeka Alanı</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase">Ham Puan</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase">Yüzdelik</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase">Standart</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase">Seviye</th>
+                        </tr>
+                    </thead>
+                    <tbody id="score-table-body">
+                        <!-- JS ile doldurulur -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- AI Yorumu -->
+        <div class="glass-card p-6" style="border-color: rgba(16,185,129,0.3); background: rgba(16,185,129,0.05)">
+            <h3 class="text-base font-bold text-emerald-400 mb-3 flex items-center gap-2">
+                🤖 Uzman Değerlendirmesi & Genel Yorum
+            </h3>
+            <p id="ai-comment-text" class="text-slate-300 leading-relaxed text-sm">
+                Yorum yükleniyor...
+            </p>
+        </div>
+
+        <!-- Detaylı Analiz Bölümü -->
+        <div>
+            <h3 class="text-xl font-bold text-white mb-2 text-center">🔍 Zeka Alanı Bazlı Detaylı Analiz</h3>
+            <p class="text-slate-400 text-sm text-center mb-6">Her zeka alanına tıklayarak detaylı analizi görüntüleyin</p>
+            <div id="detailed-analysis" class="space-y-3">
+                <!-- JS ile doldurulur -->
+            </div>
+        </div>
+
+        <!-- Bilimsel Uyarı -->
+        <div class="glass-card p-5"
+             style="border-color: rgba(245,158,11,0.3); background: rgba(245,158,11,0.05)">
+            <div class="flex gap-3">
+                <span class="text-2xl flex-shrink-0">⚠️</span>
+                <div>
+                    <h3 class="text-sm font-bold text-amber-400 mb-2">Bilimsel Uyarı</h3>
+                    <p class="text-slate-300 text-sm leading-relaxed">
+                        Bu envanter Howard Gardner'ın Çoklu Zeka Kuramından yararlanılarak hazırlanmış bir <strong>yönelim değerlendirme aracıdır</strong>.
+                        <strong>Klinik tanı amacı taşımaz.</strong>
+                        Sonuçlar öğrencinin ilgi, öğrenme tercihleri ve güçlü yönleri hakkında
+                        <strong>rehberlik amacıyla</strong> kullanılmalıdır.
+                        Bu raporun yorumlanmasında uzman bir rehber öğretmen veya pedagog görüşü alınması önerilmektedir.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════
+     EKRAN 5: YÖNETİCİ PANELİ
+     ════════════════════════════════════════════════════════ -->
+<div id="screen-admin" class="screen hidden min-h-screen">
+    <div class="flex flex-col lg:flex-row min-h-screen">
+
+        <!-- Sidebar -->
+        <aside class="admin-sidebar w-full lg:w-64 flex-shrink-0 p-4 lg:p-6">
+            <div class="mb-6">
+                <h2 class="text-lg font-black text-white">⚙️ Yönetici Paneli</h2>
+                <p class="text-xs text-slate-400 mt-1">Çoklu Zeka Analiz Sistemi</p>
+            </div>
+
+            <!-- İstatistik Kartları -->
+            <div class="grid grid-cols-2 lg:grid-cols-1 gap-3 mb-6">
+                <div class="glass-card p-3">
+                    <p class="text-xs text-slate-400">Toplam Öğrenci</p>
+                    <p id="admin-stat-total" class="text-2xl font-black text-indigo-400">0</p>
+                </div>
+                <div class="glass-card p-3">
+                    <p class="text-xs text-slate-400">Genel Ortalama</p>
+                    <p id="admin-stat-avg" class="text-2xl font-black text-green-400">-</p>
+                </div>
+                <div class="glass-card p-3">
+                    <p class="text-xs text-slate-400">Baskın Alan</p>
+                    <p id="admin-stat-dominant" class="text-xl font-black text-purple-400">-</p>
+                </div>
+                <div class="glass-card p-3">
+                    <p class="text-xs text-slate-400">Bu Ay</p>
+                    <p id="admin-stat-month" class="text-2xl font-black text-yellow-400">0</p>
+                </div>
+            </div>
+
+            <!-- İşlem Butonları -->
+            <div class="space-y-2">
+                <button onclick="adminExportExcel()"
+                        class="w-full btn-secondary text-sm py-2.5 justify-center">
+                    📊 Excel Raporu İndir
+                </button>
+                <button onclick="adminExportJSON()"
+                        class="w-full btn-secondary text-sm py-2.5 justify-center">
+                    💾 JSON Dışa Aktar
+                </button>
+                <button onclick="document.getElementById('json-import-input').click()"
+                        class="w-full btn-secondary text-sm py-2.5 justify-center">
+                    📤 JSON İçe Aktar
+                </button>
+                <hr class="border-slate-700 my-2">
+
+                <!-- Logo yönetimi -->
+                <p class="text-xs text-slate-400 font-semibold uppercase">Okul Logosu</p>
+                <div class="flex items-center gap-2">
+                    <img id="logo-preview" class="hidden w-12 h-12 object-contain rounded-lg bg-white/10">
+                    <p id="no-logo-text" class="text-xs text-slate-500">Logo yüklenmedi</p>
+                </div>
+                <button onclick="document.getElementById('logo-upload').click()"
+                        class="w-full btn-secondary text-sm py-2 justify-center">
+                    🖼️ Logo Yükle
+                </button>
+                <button onclick="handleLogoDelete()"
+                        class="w-full btn-danger text-sm py-2 justify-center">
+                    🗑️ Logoyu Sil
+                </button>
+
+                <hr class="border-slate-700 my-2">
+                <button onclick="adminClearAllData()"
+                        class="w-full btn-danger text-sm py-2 justify-center">
+                    ⚠️ Tüm Verileri Sil
+                </button>
+                <button onclick="startTest()"
+                        class="w-full btn-primary text-sm py-2.5 justify-center">
+                    ➕ Yeni Test Başlat
+                </button>
+            </div>
+        </aside>
+
+        <!-- Ana İçerik -->
+        <main class="flex-1 p-4 lg:p-6 overflow-auto">
+
+            <!-- Filtre & Arama Bölümü -->
+            <div class="glass-card p-4 mb-5">
+                <h3 class="text-sm font-bold text-white mb-3">🔍 Arama & Filtrele</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <input id="admin-search" type="text" class="form-input text-sm"
+                           placeholder="Ad, soyad veya numara ara..."
+                           oninput="adminSearch(this.value)">
+                    <select id="admin-filter-sinif" class="form-input text-sm"
+                            onchange="adminFilterBySinif(this.value)">
+                        <option value="">Tüm Sınıflar</option>
+                        <option value="5">5. Sınıf</option>
+                        <option value="6">6. Sınıf</option>
+                        <option value="7">7. Sınıf</option>
+                        <option value="8">8. Sınıf</option>
+                    </select>
+                    <select id="admin-filter-sube" class="form-input text-sm"
+                            onchange="adminFilterBySube(this.value)">
+                        <option value="">Tüm Şubeler</option>
+                        <option>A</option><option>B</option><option>C</option>
+                        <option>D</option><option>E</option><option>F</option><option>G</option>
+                    </select>
+                    <button onclick="adminClearFilters()" class="btn-secondary text-sm py-2 justify-center">
+                        🗑️ Filtreleri Temizle
+                    </button>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-3">
+                    <div class="flex items-center gap-2">
+                        <label class="text-xs text-slate-400 whitespace-nowrap">Başlangıç:</label>
+                        <input id="admin-filter-start" type="date" class="form-input text-sm"
+                               onchange="adminFilterByDate(this.value, document.getElementById('admin-filter-end').value)">
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <label class="text-xs text-slate-400 whitespace-nowrap">Bitiş:</label>
+                        <input id="admin-filter-end" type="date" class="form-input text-sm"
+                               onchange="adminFilterByDate(document.getElementById('admin-filter-start').value, this.value)">
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <label class="text-xs text-slate-400">Sıralama:</label>
+                        <select class="form-input text-sm" onchange="adminSort(this.value)">
+                            <option value="savedAt">Tarih</option>
+                            <option value="name">Ad Soyad</option>
+                            <option value="totalPercentage">Genel Ortalama</option>
+                            <option value="mantiksal">Matematik</option>
+                            <option value="sozel">Sözel</option>
+                            <option value="gorsel">Görsel</option>
+                            <option value="sosyal">Sosyal</option>
+                            <option value="doga">Doğa</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <label class="text-xs text-slate-400">Sayfa:</label>
+                        <select class="form-input text-sm" onchange="adminSetPageSize(this.value)">
+                            <option value="10">10</option>
+                            <option value="15" selected>15</option>
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tablo + Top Rankings yan yana -->
+            <div class="flex flex-col xl:flex-row gap-5 mb-5">
+
+                <!-- Öğrenci Tablosu -->
+                <div class="flex-1 glass-card overflow-hidden">
+                    <div class="p-4 border-b border-slate-700/50 flex justify-between items-center">
+                        <h3 class="text-sm font-bold text-white">👥 Öğrenci Listesi</h3>
+                        <span id="admin-result-count" class="text-xs text-slate-400">0 öğrenci</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="border-b border-slate-700/50">
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-slate-400 cursor-pointer hover:text-white"
+                                        onclick="adminSort('name')" data-sort-key="name">Ad Soyad ↕</th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-slate-400 hidden lg:table-cell cursor-pointer hover:text-white"
+                                        onclick="adminSort('savedAt')" data-sort-key="savedAt">Tarih ↕</th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-slate-400">Baskın Alan</th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-slate-400 cursor-pointer hover:text-white"
+                                        onclick="adminSort('totalPercentage')" data-sort-key="totalPercentage">Ort. ↕</th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-slate-400">İşlem</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-table-body">
+                                <!-- JS ile doldurulur -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Sayfalama -->
+                    <div class="p-3 border-t border-slate-700/50 flex justify-between items-center">
+                        <button onclick="adminPrevPage()" id="admin-prev-page"
+                                class="btn-secondary text-xs py-1.5 px-3">← Önceki</button>
+                        <span id="admin-page-info" class="text-xs text-slate-400">Sayfa 1 / 1</span>
+                        <button onclick="adminNextPage()" id="admin-next-page"
+                                class="btn-secondary text-xs py-1.5 px-3">Sonraki →</button>
+                    </div>
+                </div>
+
+                <!-- Top Sıralamalar -->
+                <div class="xl:w-72 glass-card p-4">
+                    <h3 class="text-sm font-bold text-white mb-3">🏆 Alan Bazlı Top 5</h3>
+                    <div id="admin-top-rankings">
+                        <!-- JS ile doldurulur -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Admin Bar Grafiği -->
+            <div class="glass-card p-5">
+                <h3 class="text-sm font-bold text-white mb-4">📊 Sınıf Ortalamaları Grafiği</h3>
+                <canvas id="adminBarChart" height="180"></canvas>
+            </div>
+
+        </main>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════
+     JAVASCRIPT MODÜLLERI (Sıra önemli!)
+     ════════════════════════════════════════════════════════ -->
+<script src="js/questions.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/scoring.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/pdf.js"></script>
+<script src="js/excel.js"></script>
+<script src="js/admin.js"></script>
+<script src="js/app.js"></script>
+
+<!-- Parçacık animasyonu başlatma -->
+<script>
+(function initParticles() {
+    const container = document.getElementById('particles-container');
+    if (!container) return;
+
+    const colors = ['#6366f1','#8b5cf6','#3b82f6','#22c55e','#f97316','#eab308','#ef4444','#84cc16'];
+    const count = 25;
+
+    for (let i = 0; i < count; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'particle';
+        const size = Math.random() * 6 + 3;
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        particle.style.cssText = `
+            width: ${size}px;
+            height: ${size}px;
+            left: ${Math.random() * 100}%;
+            background-color: ${color};
+            animation-duration: ${Math.random() * 12 + 8}s;
+            animation-delay: ${Math.random() * 6}s;
+        `;
+        container.appendChild(particle);
+    }
+})();
+</script>
+</body>
+</html>
